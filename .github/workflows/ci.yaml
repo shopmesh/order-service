@@ -1,0 +1,37 @@
+name: order-service-ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+
+  validation:
+    uses: shopmesh/shared-workflows-template/.github/workflows/validation-ci.yaml@main
+    with:
+      service_name: order-service
+      service_path: .
+      runtime: python
+      github_event_name: ${{ github.event_name }}
+    secrets: inherit
+
+  build:
+    needs: validation
+    uses: shopmesh/shared-workflows-template/.github/workflows/generate-tag-and-build-image-trivy.yaml@main
+    with:
+      service_name: order-service
+      service_path: .
+      run_trivy: ${{ github.event_name == 'pull_request' }}
+    secrets: inherit
+
+  push:
+    needs: build
+    if: github.event_name == 'push'
+    uses: shopmesh/shared-workflows-template/.github/workflows/push.yaml@main
+    with:
+      service_name: order-service
+      git_tag: ${{ needs.build.outputs.tag }}
+      tag_exists: ${{ needs.build.outputs.tag_exists }}
+    secrets: inherit
