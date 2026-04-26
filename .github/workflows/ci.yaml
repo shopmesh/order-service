@@ -1,43 +1,61 @@
-name: order-service-ci
+# order-service CI/CD
+# Runtime: Python
+#
+# PR   → code-quality → build (with Trivy)
+# main → build (with Trivy) → helm update
+name: order-service
 
 on:
   push:
-    branches: [main, develop]
-    paths:
-      - 'app/**'
-      - 'Dockerfile'
-      - 'requirements.txt'
-      - '.github/workflows/**'
+    branches: [main]
+    paths: ["order-service/**"]
   pull_request:
-    branches: [main, develop]
-  workflow_dispatch:
+    branches: [main]
+    paths: ["order-service/**"]
 
 jobs:
-
-  validation:
-    uses: shopmesh/shared-workflows-template/.github/workflows/validation-ci.yaml@main
+  code-quality:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/reusable/code-quality.yml
     with:
-      service_name: order-service
-      service_path: .
-      runtime: python
+      service_name:      order-service
+      service_path:      order-service
+      runtime:           python
       github_event_name: ${{ github.event_name }}
-    secrets: inherit
+    secrets:
+      SONAR_TOKEN:    ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SNYK_TOKEN:     ${{ secrets.SNYK_TOKEN }}
 
   build:
-    needs: validation
-    uses: shopmesh/shared-workflows-template/.github/workflows/generate-tag-and-build-image-trivy.yaml@main
+    needs: code-quality
+    if: always() && (needs.code-quality.result == 'success' || needs.code-quality.result == 'skipped')
+    uses: ./.github/workflows/reusable/build.yml
     with:
       service_name: order-service
-      service_path: .
-      run_trivy: true
-    secrets: inherit
+      service_path: order-service
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
 
-  push:
+  helm:
     needs: build
-    if: github.event_name == 'push'
-    uses: shopmesh/shared-workflows-template/.github/workflows/push.yaml@main
+    if: github.ref_name == 'main' && github.event_name == 'push' && needs.build.result == 'success'
+    uses: ./.github/workflows/reusable/helm.yml
     with:
       service_name: order-service
-      git_tag: ${{ needs.build.outputs.tag }}
-      tag_exists: ${{ needs.build.outputs.tag_exists }}
-    secrets: inherit
+      image_tag:    ${{ needs.build.outputs.tag }}
+      helm_repo:    priyatham753/shopmesh-infra
+    secrets:
+      HELM_CHARTS_TOKEN: ${{ secrets.HELM_CHARTS_TOKEN }}
+
+  notify:
+    needs: [code-quality, build, helm]
+    if: failure()
+    uses: ./.github/workflows/reusable/notify.yml
+    with:
+      service_name: order-service
+    secrets:
+      SENDGRID_API_KEY:  ${{ secrets.SENDGRID_API_KEY }}
+      NOTIFY_FROM_EMAIL: ${{ secrets.NOTIFY_FROM_EMAIL }}
+      NOTIFY_TO_EMAIL:   ${{ secrets.NOTIFY_TO_EMAIL }}
