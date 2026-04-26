@@ -11,7 +11,7 @@ on:
 jobs:
   code-quality:
     if: github.event_name == 'pull_request'
-    uses: shopmesh/shared-workflows-template/.github/workflows/reusable/code-quality.yml@main
+    uses: shopmesh/shared-workflows-template/.github/workflows/code-quality.yml@main
     with:
       service_name:      order-service
       service_path:      order-service
@@ -25,7 +25,7 @@ jobs:
   build:
     needs: code-quality
     if: always() && (needs.code-quality.result == 'success' || needs.code-quality.result == 'skipped')
-    uses: shopmesh/shared-workflows-template/.github/workflows/reusable/build.yml@main
+    uses: shopmesh/shared-workflows-template/.github/workflows/build.yml@main
     with:
       service_name: order-service
       service_path: order-service
@@ -36,7 +36,7 @@ jobs:
   helm:
     needs: build
     if: github.ref_name == 'main' && github.event_name == 'push' && needs.build.result == 'success'
-    uses: shopmesh/shared-workflows-template/.github/workflows/reusable/helm.yml@main
+    uses: shopmesh/shared-workflows-template/.github/workflows/helm.yml@main
     with:
       service_name: order-service
       image_tag:    ${{ needs.build.outputs.tag }}
@@ -47,7 +47,7 @@ jobs:
   notify:
     needs: [code-quality, build, helm]
     if: failure()
-    uses: shopmesh/shared-workflows-template/.github/workflows/reusable/notify.yml@main
+    uses: shopmesh/shared-workflows-template/.github/workflows/notify.yml@main
     with:
       service_name: order-service
     secrets:
