@@ -3,10 +3,8 @@ name: order-service
 on:
   push:
     branches: [main]
-    paths: ["order-service/**"]
   pull_request:
     branches: [main]
-    paths: ["order-service/**"]
 
 jobs:
   code-quality:
