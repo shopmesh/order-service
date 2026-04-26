@@ -8,7 +8,9 @@ on:
 
 jobs:
   code-quality:
-    if: github.event_name == 'pull_request' || github.ref_name == 'develop'
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref_name == 'develop')
     uses: shopmesh/shared-workflows-template/.github/workflows/code-quality.yml@main
     with:
       service_name:      order-service
