@@ -2,13 +2,15 @@ name: order-service
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
 jobs:
   code-quality:
-    if: github.event_name == 'pull_request'
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && github.ref_name == 'develop')
     uses: shopmesh/shared-workflows-template/.github/workflows/code-quality.yml@main
     with:
       service_name:      order-service
@@ -38,7 +40,7 @@ jobs:
     with:
       service_name: order-service
       image_tag:    ${{ needs.build.outputs.tag }}
-      helm_repo:    priyatham753/shopmesh-infra
+      helm_repo:    shopmesh/shopmesh-infra   # 🔥 fix this also
     secrets:
       HELM_CHARTS_TOKEN: ${{ secrets.HELM_CHARTS_TOKEN }}
 
