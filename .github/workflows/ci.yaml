@@ -3,8 +3,14 @@ name: order-service-ci
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'app/**'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - '.github/workflows/**'
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
 
@@ -23,7 +29,7 @@ jobs:
     with:
       service_name: order-service
       service_path: .
-      run_trivy: ${{ github.event_name == 'pull_request' }}
+      run_trivy: true
     secrets: inherit
 
   push:
