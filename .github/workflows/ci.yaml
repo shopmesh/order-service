@@ -33,20 +33,33 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN:    ${{ secrets.DOCKERHUB_TOKEN }}
 
-  helm:
+  helm-prod:
     needs: build
-    if: github.ref_name == 'main' && github.event_name == 'push' && needs.build.result == 'success'
+    if: always() && needs.build.result == 'success' && github.ref_name == 'main' && github.event_name == 'push'
     uses: shopmesh/shared-workflows-template/.github/workflows/helm.yml@main
     with:
       service_name: order-service
       image_tag:    ${{ needs.build.outputs.tag }}
-      helm_repo:    shopmesh/shopmesh-infra   # 🔥 fix this also
+      helm_repo:    shopmesh/shopmesh-infra
+      values_file:  charts/order-service/values-prod.yaml
+    secrets:
+      HELM_CHARTS_TOKEN: ${{ secrets.HELM_CHARTS_TOKEN }}
+
+  helm-dev:
+    needs: build
+    if: always() && needs.build.result == 'success' && github.ref_name == 'develop' && github.event_name == 'push'
+    uses: shopmesh/shared-workflows-template/.github/workflows/helm.yml@main
+    with:
+      service_name: order-service
+      image_tag:    ${{ needs.build.outputs.tag }}
+      helm_repo:    shopmesh/shopmesh-infra
+      values_file:  charts/order-service/values-dev.yaml
     secrets:
       HELM_CHARTS_TOKEN: ${{ secrets.HELM_CHARTS_TOKEN }}
 
   notify:
-    needs: [code-quality, build, helm]
-    if: failure()
+    needs: [code-quality, build, helm-prod, helm-dev]
+    if: always() && contains(needs.*.result, 'failure')
     uses: shopmesh/shared-workflows-template/.github/workflows/notify.yml@main
     with:
       service_name: order-service
